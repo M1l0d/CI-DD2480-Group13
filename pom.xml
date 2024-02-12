@@ -70,6 +70,12 @@
         <artifactId>github-api</artifactId>
         <version>1.318</version>
     </dependency>
+
+    <dependency>
+        <groupId>org.apache.maven.shared</groupId>
+        <artifactId>maven-invoker</artifactId>
+        <version>3.0.1</version> 
+    </dependency>
 </dependencies>
 
 </project>

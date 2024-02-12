@@ -5,6 +5,7 @@ import javax.servlet.ServletException;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 import org.eclipse.jetty.server.Server;
@@ -16,6 +17,10 @@ import org.eclipse.jetty.util.log.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.apache.commons.io.IOUtils;
+import org.apache.maven.shared.invoker.DefaultInvocationRequest;
+import org.apache.maven.shared.invoker.DefaultInvoker;
+import org.apache.maven.shared.invoker.InvocationRequest;
+import org.apache.maven.shared.invoker.InvocationResult;
 
 import java.io.File;
 
@@ -29,11 +34,6 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         response.setContentType("text/html;charset=utf-8");
         response.setStatus(HttpServletResponse.SC_OK);
         baseRequest.setHandled(true);
-
-        System.out.println(target);
-
-        // TODO: Implement if-check to only do code below(cloning and deleting) if the
-        // event is a push
 
         String eventType = request.getHeader("X-Github-Event");
 
@@ -52,7 +52,8 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         String cloneUrl = repository.getString("clone_url");
         String branchName = jsonObject.getString("ref").replace("refs/heads/", "");
 
-        File localPath = new File("src/main/resources/");
+        String clonedRepoPath = "src/main/resources/";
+        File localPath = new File(clonedRepoPath);
 
         try {
             System.out.println("Cloning repository...");
@@ -66,51 +67,31 @@ public class ContinuousIntegrationServer extends AbstractHandler {
             e.printStackTrace();
         }
 
-        // TODO: Compile directory using maven commands
+        // Compiles directory using maven commands
+        InvocationRequest invocationRequest = new DefaultInvocationRequest();
+        invocationRequest.setPomFile(new File(clonedRepoPath, "pom.xml"));
+        invocationRequest.setBaseDirectory(localPath);
+        invocationRequest.setGoals(Collections.singletonList("clean install"));
+
+        DefaultInvoker invoker = new DefaultInvoker();
+
         try {
-            System.out.println("Compiling Program...");
-            ProcessBuilder cleanInstallBuilder = new ProcessBuilder("mvn", "clean", "install");
-            cleanInstallBuilder.directory(localPath);
-            Process cleanInstallProcess = cleanInstallBuilder.start();
-            int cleanInstallExitCode = cleanInstallProcess.waitFor();
+            InvocationResult result = invoker.execute(invocationRequest);
 
-            if (cleanInstallExitCode == 0) {
-                System.out.println("Maven clean install successful");
+            if (result.getExitCode() == 0) {
+                System.out.println("Build successful!");
             } else {
-                System.out.println("Maven clean install failed");
+                System.out.println("Build failed. Exit code: " + result.getExitCode());
             }
-
-        } catch (IOException e) {
-            System.out.println("Error starting compilation process: " + e.getMessage());
-        } catch (InterruptedException e) {
-            System.out.println("Compilation process interrupted: " + e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
+        // Delete repository after compilation
         try {
-            ProcessBuilder execJavaBuilder = new ProcessBuilder("mvn", "exec:java");
-            execJavaBuilder.directory(localPath);
-            Process execJavaProcess = execJavaBuilder.start();
-            int execJavaExitCode = execJavaProcess.waitFor();
-
-            if (execJavaExitCode == 0) {
-                System.out.println("Maven exec:java successful");
-            } else {
-                System.out.println("Maven exec:java failed");
-            }
-        } catch (IOException e) {
-            System.out.println("Error starting 'exec:java' process: " + e.getMessage());
-        } catch (InterruptedException e) {
-            System.out.println("'exec:java' process interrupted: " + e.getMessage());
-        }
-
-        // delete repository after compilation
-        try {
-            // Delete the repository directory
             deleteDirectory(localPath);
-
             System.out.println("Repository deleted successfully!");
         } catch (Exception e) {
-            // Handle deletion exception
             e.printStackTrace();
         }
 
