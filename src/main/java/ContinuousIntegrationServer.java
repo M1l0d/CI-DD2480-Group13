@@ -29,14 +29,26 @@ import java.io.File;
  * See the Jetty documentation for API documentation of those classes.
  */
 public class ContinuousIntegrationServer extends AbstractHandler {
-    
+
+    /**
+     * Method that handles the request from the webhook
+     * 
+     * @param target      - The target of the request
+     * @param baseRequest - The original unwrapped request object
+     * @param request     - The request either as the Request object or a wrapper of
+     *                    that request
+     * @param response    - The response as the Response object or a wrapper of that
+     *                    request
+     * @throws IOException      - If an input or output exception occurs
+     * @throws ServletException - If a servlet exception occurs
+     */
     public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
             throws IOException, ServletException {
         response.setContentType("text/html;charset=utf-8");
         response.setStatus(HttpServletResponse.SC_OK);
         baseRequest.setHandled(true);
 
-        String eventType = request.getHeader("X-Github-Event");
+        String eventType = request.getHeader("X-Github-Event"); // Get the event type from the header
         String jsonRequest = IOUtils.toString(request.getReader());
         JSONObject jsonObject = new JSONObject(jsonRequest);
 
@@ -44,15 +56,20 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         if (!"push".equals(eventType)) {
             response.getWriter().println("Not performing CI job - Event is not 'push'");
             return;
-        }
-        else {
+        } else {
             System.out.println("Event is 'push' - Proceeding with CI job");
-            handelPushEvent(jsonObject);
+            handlePushEvent(jsonObject);
         }
         response.getWriter().println("CI job done");
     }
 
-    private void handelPushEvent(JSONObject jsonObject) {
+    /**
+     * Method that handles the push event by accepting the JSON object and running
+     * methods to clone the repository, compile it and delete the cloned repository
+     * 
+     * @param jsonObject - JSON object containing the push event
+     */
+    private void handlePushEvent(JSONObject jsonObject) {
         String clonedRepoPath = "src/main/resources/";
         File clonedRepoFile = new File(clonedRepoPath);
 
@@ -61,12 +78,19 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         deleteDirectory(clonedRepoFile);
     }
 
-    private void cloneRepository(JSONObject jsonObject, File clonedRepoFile ) {
+    /**
+     * Method that clones the repository from the JSON object
+     * 
+     * @param jsonObject     - JSON object containing the push event
+     * @param clonedRepoFile - File object representing the cloned repository
+     */
+    private void cloneRepository(JSONObject jsonObject, File clonedRepoFile) {
         // Get clone url and branch name
         JSONObject repository = jsonObject.getJSONObject("repository");
         String cloneUrl = repository.getString("clone_url");
         String branchName = jsonObject.getString("ref").replace("refs/heads/", "");
 
+        // Cloning the repository
         try {
             System.out.println("Cloning repository...");
             Git.cloneRepository()
@@ -80,15 +104,23 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         }
     }
 
-    // Compiles directory using maven commands
+    /**
+     * Method that compiles the repository using maven commands, specifically "clean
+     * install"
+     * 
+     * @param clonedRepoPath - Path to the cloned repository (src/main/resources/)
+     * @param clonedRepoFile - File object representing the cloned repository
+     */
     public void compileRepository(String clonedRepoPath, File clonedRepoFile) {
         InvocationRequest invocationRequest = new DefaultInvocationRequest();
-        invocationRequest.setPomFile(new File(clonedRepoPath, "pom.xml"));
+        invocationRequest.setPomFile(new File(clonedRepoPath, "pom.xml")); // pom.xml is the file that contains the
+                                                                           // maven configuration
         invocationRequest.setBaseDirectory(clonedRepoFile);
         invocationRequest.setGoals(Collections.singletonList("clean install"));
 
-        DefaultInvoker invoker = new DefaultInvoker();
+        DefaultInvoker invoker = new DefaultInvoker(); // Invoker is used to execute the maven commands
 
+        // Excuting the maven commands
         try {
             InvocationResult result = invoker.execute(invocationRequest);
 
@@ -102,6 +134,14 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         }
     }
 
+    /**
+     * Method that deletes the cloned repository after the CI job is done to avoid
+     * clutter
+     * The method works recursively by deleting all files and directories within the
+     * cloned repository
+     * 
+     * @param directory - File object representing the cloned repository
+     */
     private void deleteDirectory(File directory) {
         try {
             if (directory.exists()) {
