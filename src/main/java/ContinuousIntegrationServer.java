@@ -19,16 +19,12 @@ import org.apache.commons.io.IOUtils;
 
 import java.io.File;
 
-
 /**
  * Skeleton of a ContinuousIntegrationServer which acts as webhook
  * See the Jetty documentation for API documentation of those classes.
  */
 public class ContinuousIntegrationServer extends AbstractHandler {
-    public void handle(String target,
-            Request baseRequest,
-            HttpServletRequest request,
-            HttpServletResponse response)
+    public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
             throws IOException, ServletException {
         response.setContentType("text/html;charset=utf-8");
         response.setStatus(HttpServletResponse.SC_OK);
@@ -36,7 +32,17 @@ public class ContinuousIntegrationServer extends AbstractHandler {
 
         System.out.println(target);
 
-        //TODO: Implement if-check to only do code below(cloning and deleting) if the event is a push
+        // TODO: Implement if-check to only do code below(cloning and deleting) if the
+        // event is a push
+
+        String eventType = request.getHeader("X-Github-Event");
+
+        // If it is not a push event, do not continue
+        if (!"push".equals(eventType)) {
+            response.getWriter().println("Not performing CI job - Event is not 'push'");
+            return;
+        }
+        System.out.println("Event is 'push' - Proceeding with CI job");
 
         String jsonRequest = IOUtils.toString(request.getReader());
         JSONObject jsonObject = new JSONObject(jsonRequest);
@@ -60,8 +66,42 @@ public class ContinuousIntegrationServer extends AbstractHandler {
             e.printStackTrace();
         }
 
-        //TODO: Compile directory using maven commands
+        // TODO: Compile directory using maven commands
+        try {
+            System.out.println("Compiling Program...");
+            ProcessBuilder cleanInstallBuilder = new ProcessBuilder("mvn", "clean", "install");
+            cleanInstallBuilder.directory(localPath);
+            Process cleanInstallProcess = cleanInstallBuilder.start();
+            int cleanInstallExitCode = cleanInstallProcess.waitFor();
 
+            if (cleanInstallExitCode == 0) {
+                System.out.println("Maven clean install successful");
+            } else {
+                System.out.println("Maven clean install failed");
+            }
+
+        } catch (IOException e) {
+            System.out.println("Error starting compilation process: " + e.getMessage());
+        } catch (InterruptedException e) {
+            System.out.println("Compilation process interrupted: " + e.getMessage());
+        }
+
+        try {
+            ProcessBuilder execJavaBuilder = new ProcessBuilder("mvn", "exec:java");
+            execJavaBuilder.directory(localPath);
+            Process execJavaProcess = execJavaBuilder.start();
+            int execJavaExitCode = execJavaProcess.waitFor();
+
+            if (execJavaExitCode == 0) {
+                System.out.println("Maven exec:java successful");
+            } else {
+                System.out.println("Maven exec:java failed");
+            }
+        } catch (IOException e) {
+            System.out.println("Error starting 'exec:java' process: " + e.getMessage());
+        } catch (InterruptedException e) {
+            System.out.println("'exec:java' process interrupted: " + e.getMessage());
+        }
 
         // delete repository after compilation
         try {
@@ -73,7 +113,6 @@ public class ContinuousIntegrationServer extends AbstractHandler {
             // Handle deletion exception
             e.printStackTrace();
         }
-
 
         response.getWriter().println("CI job done");
     }
