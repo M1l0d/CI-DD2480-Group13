@@ -3,3 +3,4 @@ Repository containing lab 2 in the course DD2480 Software Engineering Fundamenta
 
 test 1
 test2
+test3
