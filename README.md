@@ -32,3 +32,6 @@ Sets up Maven invocation requests to compile the repository using 'clean install
 private void deleteRepository()
 ```
 The method is used to recursively delete the cloned repository directory after the CI job is done. This is done to avoid clutter and accumulation of unnecessary files.
+
+## Build history
+Recent build history can be acessed through this [url](https://normal-full-glider.ngrok-free.app/)

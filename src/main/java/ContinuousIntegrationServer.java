@@ -3,37 +3,25 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.ServletException;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jetty.util.log.Log;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.maven.shared.invoker.DefaultInvocationRequest;
 import org.apache.maven.shared.invoker.DefaultInvoker;
-import org.apache.maven.shared.invoker.InvocationOutputHandler;
 import org.apache.maven.shared.invoker.InvocationRequest;
 import org.apache.maven.shared.invoker.InvocationResult;
-import org.apache.maven.shared.invoker.PrintStreamHandler;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import java.io.File;
@@ -63,38 +51,54 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         response.setStatus(HttpServletResponse.SC_OK);
         baseRequest.setHandled(true);
 
-        System.out.println(target);
+        System.out.println("target: " + target);
+        System.out.println(request.getMethod());
+        System.out.println("URI: " + request.getRequestURI());
 
 
-        if (target.equals("/builds")) {
+        if (request.getMethod().equals("GET")) {
 
             Path jsonFilePath = Paths.get("src/main/resources/buildHistory.JSON");
-
             String existingJsonContent = new String(Files.readAllBytes(jsonFilePath));
             List<BuildAttempt> existingBuildAttempts = new Gson().fromJson(existingJsonContent, new TypeToken<List<BuildAttempt>>() {}.getType());
 
-            response.getWriter().println("<html><body>");
-            for (BuildAttempt buildAttempt : existingBuildAttempts) {
-                response.getWriter().println("<a href='" + buildAttempt.getBuildDate() + "'>" + buildAttempt.getBuildSuccess() + "</a><br>");
+            if(target.equals("/builds")) {                
+                response.getWriter().println("<html><body>");
+                for (BuildAttempt buildAttempt : existingBuildAttempts) {
+                    response.getWriter().println("<a href='/" + buildAttempt.commitId + "'>"  + " Build Date: " + buildAttempt.getBuildDate() + " Build status: " + buildAttempt.getBuildSuccess() + "</a><br>");
+                }
+                response.getWriter().println("</body></html>");
             }
-            response.getWriter().println("</body></html>");
+            else {
+                response.getWriter().println("<html><body>");
+                for (BuildAttempt buildAttempt : existingBuildAttempts) {
+                    if(request.getRequestURI().equals("/" + buildAttempt.commitId)) {
+                        response.getWriter().println( "<div> Build Date: "  +  buildAttempt.buildDate + "</div>");
+                        response.getWriter().println("<div> Build Status: "  +  buildAttempt.buildSuccess + "</div>");
+                        response.getWriter().println("<div> Commit done by: "  +  buildAttempt.commitMadeBy + "</div>");
+                        response.getWriter().println("<div> Build log: </div>");
+                        response.getWriter().println("<div style=\"white-space: pre-line;\">" + buildAttempt.buildLog + "</div>");
+                    }
+                }
+                response.getWriter().println("</body></html>");
+            }
         }
         
-
-        String eventType = request.getHeader("X-Github-Event"); // Get the event type from the header
-        String jsonRequest = IOUtils.toString(request.getReader());
-        JSONObject jsonObject = new JSONObject(jsonRequest);
-
-        // If it is not a push event, do not continue
-        if (!"push".equals(eventType)) {
-            response.getWriter().println("Not performing CI job - Event is not 'push'");
-            return;
-        } else {
-            System.out.println("Event is 'push' - Proceeding with CI job");
-            handlePushEvent(jsonObject);
+        if(request.getMethod().equals("POST")) {
+            String eventType = request.getHeader("X-Github-Event"); // Get the event type from the header
+            String jsonRequest = IOUtils.toString(request.getReader());
+            JSONObject jsonObject = new JSONObject(jsonRequest);
+    
+            // If it is not a push event, do not continue
+            if (!"push".equals(eventType)) {
+                response.getWriter().println("Not performing CI job - Event is not 'push'");
+                return;
+            } else {
+                System.out.println("Event is 'push' - Proceeding with CI job");
+                handlePushEvent(jsonObject);
+            }
         }
-
-        response.getWriter().println("CI job done");
+        response.getWriter().println("<a href=/builds> Go to builds </a>");
     }
 
     /**
@@ -128,7 +132,8 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         JSONObject head_commit = jsonObject.getJSONObject("head_commit");
         buildAttempt.setBuildDate(head_commit.getString("timestamp"));
         JSONObject pusher = jsonObject.getJSONObject("pusher");
-        buildAttempt.setCommitIdentifier(pusher.getString("name"));
+        buildAttempt.setCommitMadeBy(pusher.getString("name"));
+        buildAttempt.setCommitId(head_commit.getString("id"));
 
         // Cloning the repository
         try {
@@ -217,8 +222,7 @@ public class ContinuousIntegrationServer extends AbstractHandler {
 
     // used to start the CI server in command line
     public static void main(String[] args) throws Exception {
-        //SpringApplication.run(ContinuousIntegrationServer.class, args);
-        Server server = new Server(8040);
+        Server server = new Server(8034);
         server.setHandler(new ContinuousIntegrationServer());
         server.start();
         server.join();

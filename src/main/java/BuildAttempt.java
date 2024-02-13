@@ -16,8 +16,13 @@ import com.google.gson.reflect.TypeToken;
 public class BuildAttempt {
     String buildLog;
     String buildDate;
-    String commitIdentifier;
+    String commitMadeBy;
     String buildSuccess;
+    String commitId;
+
+    public void setCommitId(String commitId) {
+        this.commitId = commitId;
+    }
 
     public void setBuildDate(String buildDate) {
         this.buildDate = buildDate;
@@ -27,8 +32,8 @@ public class BuildAttempt {
         this.buildLog = buildLog;
     }
 
-    public void setCommitIdentifier(String commitIdentifier) {
-        this.commitIdentifier = commitIdentifier;
+    public void setCommitMadeBy(String commitMadeBy) {
+        this.commitMadeBy = commitMadeBy;
     }
 
     public void setBuildSuccess(String buildSuccess) {
@@ -45,20 +50,15 @@ public class BuildAttempt {
     public String getBuildSuccess() {
         return buildSuccess;
     }
-    public String getCommitIdentifier() {
-        return commitIdentifier;
+    public String getCommitMadeBy() {
+        return commitMadeBy;
+    }
+    public String getCommitId() {
+        return commitId;
     }
 
     public void saveToJsonFile() {
         Path jsonFilePath = Paths.get("src/main/resources/buildHistory.JSON");
-
-        // JSONArray jsonArray = new JSONArray();
-        // JSONObject jsonBuildAttempt = new JSONObject();
-        // jsonBuildAttempt.put("buildDate", buildDate);
-        // jsonBuildAttempt.put("buildLog", buildLog);
-        // jsonBuildAttempt.put("commitIdentifier", commitIdentifier);
-        // jsonBuildAttempt.put("buildSuccess", buildSuccess);
-        // jsonArray.put(jsonBuildAttempt);
 
         try {
             // Read existing JSON content
