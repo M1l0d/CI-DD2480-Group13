@@ -4,6 +4,8 @@ import javax.servlet.ServletException;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.stream.Collectors;
 
@@ -70,14 +72,19 @@ public class ContinuousIntegrationServer extends AbstractHandler {
      * @param jsonObject - JSON object containing the push event
      */
     public void handlePushEvent(JSONObject jsonObject) {
-        String clonedRepoPath = "src/main/resources/";
-        File clonedRepoFile = new File(clonedRepoPath);
+        String cloneddirectoryPath = "src/main/resources/";
+        File clonedRepoFile = new File(cloneddirectoryPath);
 
         cloneRepository(jsonObject, clonedRepoFile);
-        compileRepository(clonedRepoPath, clonedRepoFile);
+        compileRepository(cloneddirectoryPath, clonedRepoFile);
 
-        File gitFile = new File(clonedRepoPath + ".git");
+        File gitFile = new File(cloneddirectoryPath + ".git");
         deleteDirectory(gitFile);
+    }
+
+    private boolean isRepositoryCloned(String clonedRepoFile) {
+        File gitDirectory = new File(clonedRepoFile);
+        return gitDirectory.exists() && gitDirectory.isDirectory();
     }
 
     /**
@@ -92,19 +99,19 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         String cloneUrl = repository.getString("clone_url");
         String branchName = jsonObject.getString("ref").replace("refs/heads/", "");
 
+        if (isRepositoryCloned(clonedRepoFile.toString())) {
+            System.out.println("Repo is already cloned in a directory. Will delete now!");
+            deleteDirectory(clonedRepoFile);
+        }
         // Cloning the repository
         try {
             System.out.println("Cloning repository...");
-            //clonedRepoFile.mkdir();
-            Git git = Git.cloneRepository()
+            Git.cloneRepository()
                     .setURI(cloneUrl)
                     .setDirectory(clonedRepoFile)
                     .setBranch(branchName)
-                    .call();
+                    .call().close();
             System.out.println("Repository cloned successfully");
-            git.close();
-            //git = null;
-            //Git.shutdown();
         } catch (GitAPIException e) {
             e.printStackTrace();
         }
@@ -114,12 +121,13 @@ public class ContinuousIntegrationServer extends AbstractHandler {
      * Method that compiles the repository using maven commands, specifically "clean
      * install"
      *
-     * @param clonedRepoPath - Path to the cloned repository (src/main/resources/)
-     * @param clonedRepoFile - File object representing the cloned repository
+     * @param cloneddirectoryPath - Path to the cloned repository
+     *                            (src/main/resources/)
+     * @param clonedRepoFile      - File object representing the cloned repository
      */
-    public void compileRepository(String clonedRepoPath, File clonedRepoFile) {
+    public void compileRepository(String cloneddirectoryPath, File clonedRepoFile) {
         InvocationRequest invocationRequest = new DefaultInvocationRequest();
-        invocationRequest.setPomFile(new File(clonedRepoPath, "pom.xml")); // pom.xml is the file that contains the
+        invocationRequest.setPomFile(new File(cloneddirectoryPath, "pom.xml")); // pom.xml is the file that contains the
         // maven configuration
         invocationRequest.setBaseDirectory(clonedRepoFile);
         invocationRequest.setGoals(Collections.singletonList("clean install"));
@@ -149,62 +157,17 @@ public class ContinuousIntegrationServer extends AbstractHandler {
      * @param directory - File object representing the cloned repository
      */
     public void deleteDirectory(File directory) {
+        Path directoryPath = directory.toPath();
         try {
-            if (directory.exists()) {
-                File[] files = directory.listFiles();
-                if (files != null) {
-                    for (File file : files) {
-                        if (file.isDirectory()) {
-                            deleteDirectory(file);
-                        } else {
-                            file.delete();
-                        }
-                    }
-                }
-                directory.delete();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+            Files.walk(directoryPath)
+                    .map(Path::toFile)
+                    .sorted((o1, o2) -> -o1.compareTo(o2))
+                    .forEach(File::delete);
+            System.out.println("Local repository deleted successfully: " + directoryPath);
+        } catch (IOException e) {
+            System.err.println("Error deleting local repository: " + e.getMessage());
         }
     }
-
-    /*public void deleteDirectory(File directory){
-        try {
-            // Check if the file object represents a directory
-            if (!directory.isDirectory()) {
-                throw new IllegalArgumentException("File is not a directory: " + directory);
-            }
-
-            // List all files and directories within the directory
-            File[] files = directory.listFiles();
-
-            // Handle case where directory is empty
-            if (files == null) {
-                return;
-            }
-
-            // Delete each file and directory within the directory
-            for (File file : files) {
-                if (file.isDirectory()) {
-                    // Recursively delete subdirectories
-                    deleteDirectory(file);
-                } else {
-                    // Delete file
-                    if (!file.delete()) {
-                        throw new IOException("Failed to delete file: " + file);
-                    }
-                }
-            }
-
-            // Finally, delete the directory itself
-            if (!directory.delete()) {
-                throw new IOException("Failed to delete directory: " + directory);
-            }
-
-        } catch (Exception e){
-            e.printStackTrace();
-        }
-    }*/
 
     // used to start the CI server in command line
     public static void main(String[] args) throws Exception {

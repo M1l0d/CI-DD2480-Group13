@@ -5,14 +5,15 @@ import static org.junit.Assert.*;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.PrintStream;
+import java.util.concurrent.TimeUnit;
 
 import org.json.JSONObject;
 
-public class temporaryTest {
+public class ContinuousIntegrationServerTest {
     private ContinuousIntegrationServer CIServer;
 
     @Before
-    public void setUp(){
+    public void setUp() {
         CIServer = new ContinuousIntegrationServer();
     }
 
@@ -28,20 +29,11 @@ public class temporaryTest {
 
         CIServer.cloneRepository(jsonObject, clonedRepoFile);
 
-        final ByteArrayOutputStream outContent = new ByteArrayOutputStream();
-        System.setOut(new PrintStream(outContent));
-
-        assertEquals("Repository cloned successfully\n", outContent.toString());
+        assertTrue("Repo is cloned successfully", clonedRepoFile.exists());
     }
 
-    //payloden innehåller nyckelorden
-
-    /*Status checkar: pending när du klonat ett repo innan du bygger
-    //Failure/success när du byggt
-    success skickas till GitHub*/
-
     @Test
-    public void deletesAllFilesIfTheyExist(){
+    public void testThatRepoIsDeletedSuccesfully() throws InterruptedException {
         JSONObject jsonObject = new JSONObject();
         JSONObject repository = new JSONObject();
 
@@ -52,8 +44,10 @@ public class temporaryTest {
 
         CIServer.cloneRepository(jsonObject, clonedRepoFile);
 
+        TimeUnit.SECONDS.sleep(5);
+
         CIServer.deleteDirectory(clonedRepoFile);
 
-        assertEquals("Successfully deleted file", 4096, clonedRepoFile.length());
+        assertFalse("Repo is deleted successfully", clonedRepoFile.exists());
     }
 }
