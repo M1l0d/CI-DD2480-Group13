@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.stream.Collectors;
 
+import org.apache.commons.io.FileUtils;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
@@ -28,30 +29,44 @@ import java.io.File;
  * See the Jetty documentation for API documentation of those classes.
  */
 public class ContinuousIntegrationServer extends AbstractHandler {
-    public void handle(String target,
-            Request baseRequest,
-            HttpServletRequest request,
-            HttpServletResponse response)
+
+    /**
+     * Method that handles the request from the webhook
+     *
+     * @param target      - The target of the request
+     * @param baseRequest - The original unwrapped request object
+     * @param request     - The request either as the Request object or a wrapper of
+     *                    that request
+     * @param response    - The response as the Response object or a wrapper of that
+     *                    request
+     * @throws IOException      - If an input or output exception occurs
+     * @throws ServletException - If a servlet exception occurs
+     */
+    public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
             throws IOException, ServletException {
         response.setContentType("text/html;charset=utf-8");
         response.setStatus(HttpServletResponse.SC_OK);
         baseRequest.setHandled(true);
 
-        System.out.println(target);
+        String eventType = request.getHeader("X-Github-Event"); // Get the event type from the header
+        String jsonRequest = IOUtils.toString(request.getReader());
+        JSONObject jsonObject = new JSONObject(jsonRequest);
 
-        // here you do all the continuous integration tasks
-        // for example
-        // 1st clone your repository
-        // 2nd compile the code
-
+        // If it is not a push event, do not continue
+        if (!"push".equals(eventType)) {
+            response.getWriter().println("Not performing CI job - Event is not 'push'");
+            return;
+        } else {
+            System.out.println("Event is 'push' - Proceeding with CI job");
+            handlePushEvent(jsonObject);
+        }
         response.getWriter().println("CI job done");
     }
-
 
     /**
      * Method that handles the push event by accepting the JSON object and running
      * methods to clone the repository, compile it and delete the cloned repository
-     * 
+     *
      * @param jsonObject - JSON object containing the push event
      */
     public void handlePushEvent(JSONObject jsonObject) {
@@ -60,16 +75,18 @@ public class ContinuousIntegrationServer extends AbstractHandler {
 
         cloneRepository(jsonObject, clonedRepoFile);
         compileRepository(clonedRepoPath, clonedRepoFile);
-        deleteDirectory(clonedRepoFile);
+
+        File gitFile = new File(clonedRepoPath + ".git");
+        deleteDirectory(gitFile);
     }
 
     /**
      * Method that clones the repository from the JSON object
-     * 
+     *
      * @param jsonObject     - JSON object containing the push event
      * @param clonedRepoFile - File object representing the cloned repository
      */
-    private void cloneRepository(JSONObject jsonObject, File clonedRepoFile) {
+    public void cloneRepository(JSONObject jsonObject, File clonedRepoFile) {
         // Get clone url and branch name
         JSONObject repository = jsonObject.getJSONObject("repository");
         String cloneUrl = repository.getString("clone_url");
@@ -78,12 +95,16 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         // Cloning the repository
         try {
             System.out.println("Cloning repository...");
-            Git.cloneRepository()
+            //clonedRepoFile.mkdir();
+            Git git = Git.cloneRepository()
                     .setURI(cloneUrl)
                     .setDirectory(clonedRepoFile)
                     .setBranch(branchName)
                     .call();
             System.out.println("Repository cloned successfully");
+            git.close();
+            //git = null;
+            //Git.shutdown();
         } catch (GitAPIException e) {
             e.printStackTrace();
         }
@@ -92,14 +113,14 @@ public class ContinuousIntegrationServer extends AbstractHandler {
     /**
      * Method that compiles the repository using maven commands, specifically "clean
      * install"
-     * 
+     *
      * @param clonedRepoPath - Path to the cloned repository (src/main/resources/)
      * @param clonedRepoFile - File object representing the cloned repository
      */
     public void compileRepository(String clonedRepoPath, File clonedRepoFile) {
         InvocationRequest invocationRequest = new DefaultInvocationRequest();
         invocationRequest.setPomFile(new File(clonedRepoPath, "pom.xml")); // pom.xml is the file that contains the
-                                                                           // maven configuration
+        // maven configuration
         invocationRequest.setBaseDirectory(clonedRepoFile);
         invocationRequest.setGoals(Collections.singletonList("clean install"));
 
@@ -124,7 +145,7 @@ public class ContinuousIntegrationServer extends AbstractHandler {
      * clutter
      * The method works recursively by deleting all files and directories within the
      * cloned repository
-     * 
+     *
      * @param directory - File object representing the cloned repository
      */
     public void deleteDirectory(File directory) {
@@ -147,9 +168,47 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         }
     }
 
+    /*public void deleteDirectory(File directory){
+        try {
+            // Check if the file object represents a directory
+            if (!directory.isDirectory()) {
+                throw new IllegalArgumentException("File is not a directory: " + directory);
+            }
+
+            // List all files and directories within the directory
+            File[] files = directory.listFiles();
+
+            // Handle case where directory is empty
+            if (files == null) {
+                return;
+            }
+
+            // Delete each file and directory within the directory
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    // Recursively delete subdirectories
+                    deleteDirectory(file);
+                } else {
+                    // Delete file
+                    if (!file.delete()) {
+                        throw new IOException("Failed to delete file: " + file);
+                    }
+                }
+            }
+
+            // Finally, delete the directory itself
+            if (!directory.delete()) {
+                throw new IOException("Failed to delete directory: " + directory);
+            }
+
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+    }*/
+
     // used to start the CI server in command line
     public static void main(String[] args) throws Exception {
-        Server server = new Server(8013);
+        Server server = new Server(8040);
         server.setHandler(new ContinuousIntegrationServer());
         server.start();
         server.join();

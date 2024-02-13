@@ -17,45 +17,23 @@ public class temporaryTest {
     }
 
     @Test
-    public void test() {
-        assertTrue(true);
-    }
-
-    @Test
-    public void repoExists() {
+    public void testThatItClonesRepositorySuccessfully() {
         JSONObject jsonObject = new JSONObject();
         JSONObject repository = new JSONObject();
+
+        repository.put("clone_url", "https://github.com/M1l0d/CI-DD2480-Group13");
         jsonObject.put("repository", repository);
-        repository.put("clone_url", "https://test.se");
-        jsonObject.put("branch", "testbranch");
+        jsonObject.put("ref", "refs/heads/competent");
         File clonedRepoFile = new File("src/main/resources/");
 
-        //assertTrue(ContinuousIntegrationServer.cloneRepository(jsonObject, clonedRepoFile));
-    }
-    
-    @Test
-    public void okIfPush() {
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("eventType", "push");
+        CIServer.cloneRepository(jsonObject, clonedRepoFile);
 
         final ByteArrayOutputStream outContent = new ByteArrayOutputStream();
- 
         System.setOut(new PrintStream(outContent));
-        CIServer.handlePushEvent(jsonObject);
-        assertEquals("Event is 'push' - Proceeding with CI job\n", outContent.toString());
+
+        assertEquals("Repository cloned successfully\n", outContent.toString());
     }
 
-    @Test
-    public void notOkIfNotPush() {
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("eventType", "pull");
-
-        final ByteArrayOutputStream outContent = new ByteArrayOutputStream();
- 
-        System.setOut(new PrintStream(outContent));
-        CIServer.handlePushEvent(jsonObject);
-        assertEquals("Not performing CI job - Event is not 'push'\n", outContent.toString());
-    }
     //payloden innehåller nyckelorden
 
     /*Status checkar: pending när du klonat ett repo innan du bygger
@@ -64,10 +42,18 @@ public class temporaryTest {
 
     @Test
     public void deletesAllFilesIfTheyExist(){
-        File f = new File("testFile");
+        JSONObject jsonObject = new JSONObject();
+        JSONObject repository = new JSONObject();
 
-        CIServer.deleteDirectory(f);
+        repository.put("clone_url", "https://github.com/M1l0d/CI-DD2480-Group13");
+        jsonObject.put("repository", repository);
+        jsonObject.put("ref", "refs/heads/competent");
+        File clonedRepoFile = new File("src/main/resources/");
 
-        assertNull("Successfully deleted file", f);
+        CIServer.cloneRepository(jsonObject, clonedRepoFile);
+
+        CIServer.deleteDirectory(clonedRepoFile);
+
+        assertEquals("Successfully deleted file", 4096, clonedRepoFile.length());
     }
 }
