@@ -22,6 +22,7 @@ import org.apache.maven.shared.invoker.DefaultInvoker;
 import org.apache.maven.shared.invoker.InvocationRequest;
 import org.apache.maven.shared.invoker.InvocationResult;
 
+import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import java.io.File;
