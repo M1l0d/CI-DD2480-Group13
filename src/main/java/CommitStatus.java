@@ -20,21 +20,37 @@ public class CommitStatus {
     private String targetUrl;
     private CloseableHttpClient httpClient;
     private String token;
-
+/**
+     * Constructor for CommitStatus
+     * 
+     * @param sha       - The commit SHA
+     * @param targetUrl - The URL to the CI server
+     */
     public CommitStatus(String sha, String targetUrl) {
         this.sha = sha;
         this.targetUrl = targetUrl;
         this.token = "";
         this.httpClient = HttpClients.createDefault();
     }
-
+/**
+     * Constructor for CommitStatus
+     * 
+     * @param sha        - The commit SHA
+     * @param targetUrl  - The URL to the CI server
+     * @param httpClient - The HTTP client to use for sending the status
+     */
     public CommitStatus(String sha, String targetUrl, CloseableHttpClient httpClient) {
         this.sha = sha;
         this.targetUrl = targetUrl;
         this.token = "";
         this.httpClient = httpClient;
     }
-
+/**
+     * Method to send the commit status
+     * 
+     * @param state       - The state of the commit
+     * @param description - The description of the commit
+     */
     public void sendCommitStatus(String state, String description) {
         String url = BASEURL + owner + "/" + repo + "/statuses/" + sha;
 
@@ -62,23 +78,31 @@ public class CommitStatus {
             e.printStackTrace();
         }
     }
-
+/**
+     * Set the commit status to pending
+     */
     public void setCommitStatusToPending() {
         sendCommitStatus("pending", "Commit validation is in progress.");
     }
-
+/**
+     * Set the commit status to success
+     */
     public void setCommitStatusToSuccess() {
         sendCommitStatus("success", "Build Successful: All tests passed.");
     }
-
+/**
+     * Set the commit status to failure
+     */
     public void setCommitStatusToFailure() {
         sendCommitStatus("failure", "Failure: Tests did not pass.");
     }
-
+/**
+     * Set the commit status to error
+     */
     public void setCommitStatusToError() {
         sendCommitStatus("error", "Error: Failed to build/test/verify the commit.");
     }
-
+// Get the current date and time
     private String getDateandTime() {
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
         LocalDateTime now = LocalDateTime.now();
