@@ -44,20 +44,6 @@ public class ContinuousIntegrationServer extends AbstractHandler {
 
     /**
      * Method that handles the request from the webhook
-     *
-     * @param target      - The target of the request
-     * @param baseRequest - The original unwrapped request object
-     * @param request     - The request either as the Request object or a wrapper of
-     *                    that request
-     * @param response    - The response as the Response object or a wrapper of that
-     *                    request
-     * @throws IOException      - If an input or output exception occurs
-     * @throws ServletException - If a servlet exception occurs
-     */
-    public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
-
-    /**
-     * Method that handles the request from the webhook
      * 
      * @param target      - The target of the request
      * @param baseRequest - The original unwrapped request object
@@ -125,54 +111,6 @@ public class ContinuousIntegrationServer extends AbstractHandler {
     }
 
     /**
-     * Method that handles the push event by accepting the JSON object and running
-     * methods to clone the repository, compile it and delete the cloned repository
-     * 
-     * @param jsonObject - JSON object containing the push event
-     */
-    private void handlePushEvent(JSONObject jsonObject) {
-        String clonedRepoPath = "src/main/resources/clonedRepo";
-        File clonedRepoFile = new File(clonedRepoPath);
-        BuildAttempt buildAttempt = new BuildAttempt();
-
-        cloneRepository(jsonObject, clonedRepoFile, buildAttempt);
-        compileRepository(clonedRepoPath, clonedRepoFile, buildAttempt);
-        deleteDirectory(clonedRepoFile);
-    }
-
-    /**
-     * Method that clones the repository from the JSON object
-     * 
-     * @param jsonObject     - JSON object containing the push event
-     * @param clonedRepoFile - File object representing the cloned repository
-     */
-    private void cloneRepository(JSONObject jsonObject, File clonedRepoFile, BuildAttempt buildAttempt) {
-        // Get clone url and branch name
-        JSONObject repository = jsonObject.getJSONObject("repository");
-        String cloneUrl = repository.getString("clone_url");
-        String branchName = jsonObject.getString("ref").replace("refs/heads/", "");
-
-        JSONObject head_commit = jsonObject.getJSONObject("head_commit");
-        buildAttempt.setBuildDate(head_commit.getString("timestamp"));
-        JSONObject pusher = jsonObject.getJSONObject("pusher");
-        buildAttempt.setCommitMadeBy(pusher.getString("name"));
-        buildAttempt.setCommitId(head_commit.getString("id"));
-
-        // Cloning the repository
-        try {
-            System.out.println("Cloning repository...");
-            Git.cloneRepository()
-                    .setURI(cloneUrl)
-                    .setDirectory(clonedRepoFile)
-                    .setBranch(branchName)
-                    .call();
-            System.out.println("Repository cloned successfully");
-        } catch (GitAPIException e) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
      * Method that compiles the repository using maven commands, specifically "clean
      * install"
      * 
@@ -223,7 +161,7 @@ public class ContinuousIntegrationServer extends AbstractHandler {
      * 
      * @param directory - File object representing the cloned repository
      */
-    private void deleteDirectory(File directory) {
+    public void deleteDirectory(File directory) {
         try {
             if (directory.exists()) {
                 File[] files = directory.listFiles();
@@ -250,14 +188,15 @@ public class ContinuousIntegrationServer extends AbstractHandler {
      * @param jsonObject - JSON object containing the push event
      */
     public void handlePushEvent(JSONObject jsonObject) {
-        String cloneddirectoryPath = "src/main/resources/";
+        String cloneddirectoryPath = "src/main/resources/clonedRepo";
         File clonedRepoFile = new File(cloneddirectoryPath);
+        BuildAttempt buildAttempt = new BuildAttempt();
 
         cloneRepository(jsonObject, clonedRepoFile);
-        compileRepository(cloneddirectoryPath, clonedRepoFile);
+        compileRepository(cloneddirectoryPath, clonedRepoFile, buildAttempt);
 
         File gitFile = new File(cloneddirectoryPath + ".git");
-        deleteDirectory(gitFile);
+        deleteDirectory(clonedRepoFile);
     }
 
     private boolean isRepositoryCloned(String clonedRepoFile) {
@@ -292,58 +231,6 @@ public class ContinuousIntegrationServer extends AbstractHandler {
             System.out.println("Repository cloned successfully");
         } catch (GitAPIException e) {
             e.printStackTrace();
-        }
-    }
-
-    /**
-     * Method that compiles the repository using maven commands, specifically "clean
-     * install"
-     *
-     * @param cloneddirectoryPath - Path to the cloned repository
-     *                            (src/main/resources/)
-     * @param clonedRepoFile      - File object representing the cloned repository
-     */
-    public void compileRepository(String cloneddirectoryPath, File clonedRepoFile) {
-        InvocationRequest invocationRequest = new DefaultInvocationRequest();
-        invocationRequest.setPomFile(new File(cloneddirectoryPath, "pom.xml")); // pom.xml is the file that contains the
-        // maven configuration
-        invocationRequest.setBaseDirectory(clonedRepoFile);
-        invocationRequest.setGoals(Collections.singletonList("clean install"));
-
-        DefaultInvoker invoker = new DefaultInvoker(); // Invoker is used to execute the maven commands
-
-        // Excuting the maven commands
-        try {
-            InvocationResult result = invoker.execute(invocationRequest);
-
-            if (result.getExitCode() == 0) {
-                System.out.println("Build successful!");
-            } else {
-                System.out.println("Build failed. Exit code: " + result.getExitCode());
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Method that deletes the cloned repository after the CI job is done to avoid
-     * clutter
-     * The method works recursively by deleting all files and directories within the
-     * cloned repository
-     *
-     * @param directory - File object representing the cloned repository
-     */
-    public void deleteDirectory(File directory) {
-        Path directoryPath = directory.toPath();
-        try {
-            Files.walk(directoryPath)
-                    .map(Path::toFile)
-                    .sorted((o1, o2) -> -o1.compareTo(o2))
-                    .forEach(File::delete);
-            System.out.println("Local repository deleted successfully: " + directoryPath);
-        } catch (IOException e) {
-            System.err.println("Error deleting local repository: " + e.getMessage());
         }
     }
 

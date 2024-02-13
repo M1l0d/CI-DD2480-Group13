@@ -25,11 +25,13 @@ public class ContinuousIntegrationServerTest {
         repository.put("clone_url", "https://github.com/M1l0d/CI-DD2480-Group13");
         jsonObject.put("repository", repository);
         jsonObject.put("ref", "refs/heads/competent");
-        File clonedRepoFile = new File("src/main/resources/");
+        File clonedRepoFile = new File("src/main/resources/clonedRepo");
 
         CIServer.cloneRepository(jsonObject, clonedRepoFile);
 
         assertTrue("Repo is cloned successfully", clonedRepoFile.exists());
+        CIServer.deleteDirectory(clonedRepoFile);
+
     }
 
     @Test
@@ -40,7 +42,7 @@ public class ContinuousIntegrationServerTest {
         repository.put("clone_url", "https://github.com/M1l0d/CI-DD2480-Group13");
         jsonObject.put("repository", repository);
         jsonObject.put("ref", "refs/heads/competent");
-        File clonedRepoFile = new File("src/main/resources/");
+        File clonedRepoFile = new File("src/main/resources/clonedRepo");
 
         CIServer.cloneRepository(jsonObject, clonedRepoFile);
 
