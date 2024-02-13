@@ -6,7 +6,11 @@ import javax.servlet.ServletException;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import org.eclipse.jetty.server.Server;
@@ -29,13 +33,16 @@ import org.apache.maven.shared.invoker.PrintStreamHandler;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
 import java.io.File;
+import java.io.FileReader;
 
 /**
  * Skeleton of a ContinuousIntegrationServer which acts as webhook
  * See the Jetty documentation for API documentation of those classes.
  */
-@SpringBootApplication
 public class ContinuousIntegrationServer extends AbstractHandler {
 
     /**
@@ -56,6 +63,24 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         response.setStatus(HttpServletResponse.SC_OK);
         baseRequest.setHandled(true);
 
+        System.out.println(target);
+
+
+        if (target.equals("/builds")) {
+
+            Path jsonFilePath = Paths.get("src/main/resources/buildHistory.JSON");
+
+            String existingJsonContent = new String(Files.readAllBytes(jsonFilePath));
+            List<BuildAttempt> existingBuildAttempts = new Gson().fromJson(existingJsonContent, new TypeToken<List<BuildAttempt>>() {}.getType());
+
+            response.getWriter().println("<html><body>");
+            for (BuildAttempt buildAttempt : existingBuildAttempts) {
+                response.getWriter().println("<a href='" + buildAttempt.getBuildDate() + "'>" + buildAttempt.getBuildSuccess() + "</a><br>");
+            }
+            response.getWriter().println("</body></html>");
+        }
+        
+
         String eventType = request.getHeader("X-Github-Event"); // Get the event type from the header
         String jsonRequest = IOUtils.toString(request.getReader());
         JSONObject jsonObject = new JSONObject(jsonRequest);
@@ -68,6 +93,7 @@ public class ContinuousIntegrationServer extends AbstractHandler {
             System.out.println("Event is 'push' - Proceeding with CI job");
             handlePushEvent(jsonObject);
         }
+
         response.getWriter().println("CI job done");
     }
 

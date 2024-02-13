@@ -35,6 +35,20 @@ public class BuildAttempt {
         this.buildSuccess = buildSuccess;
     }
 
+    public String getBuildDate() {
+        return buildDate;
+    }
+
+    public String getBuildLog() {
+        return buildLog;
+    }
+    public String getBuildSuccess() {
+        return buildSuccess;
+    }
+    public String getCommitIdentifier() {
+        return commitIdentifier;
+    }
+
     public void saveToJsonFile() {
         Path jsonFilePath = Paths.get("src/main/resources/buildHistory.JSON");
 
