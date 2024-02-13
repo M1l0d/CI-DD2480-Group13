@@ -20,7 +20,8 @@ public class CommitStatus {
     private String targetUrl;
     private CloseableHttpClient httpClient;
     private String token;
-/**
+
+    /**
      * Constructor for CommitStatus
      * 
      * @param sha       - The commit SHA
@@ -32,7 +33,8 @@ public class CommitStatus {
         this.token = "";
         this.httpClient = HttpClients.createDefault();
     }
-/**
+
+    /**
      * Constructor for CommitStatus
      * 
      * @param sha        - The commit SHA
@@ -45,7 +47,8 @@ public class CommitStatus {
         this.token = "";
         this.httpClient = httpClient;
     }
-/**
+
+    /**
      * Method to send the commit status
      * 
      * @param state       - The state of the commit
@@ -78,31 +81,40 @@ public class CommitStatus {
             e.printStackTrace();
         }
     }
-/**
+
+    /**
      * Set the commit status to pending
      */
     public void setCommitStatusToPending() {
         sendCommitStatus("pending", "Commit validation is in progress.");
     }
-/**
+
+    /**
      * Set the commit status to success
      */
     public void setCommitStatusToSuccess() {
         sendCommitStatus("success", "Build Successful: All tests passed.");
     }
-/**
+
+    /**
      * Set the commit status to failure
      */
     public void setCommitStatusToFailure() {
         sendCommitStatus("failure", "Failure: Tests did not pass.");
     }
-/**
+
+    /**
      * Set the commit status to error
      */
     public void setCommitStatusToError() {
         sendCommitStatus("error", "Error: Failed to build/test/verify the commit.");
     }
-// Get the current date and time
+
+    /**
+     * Get the current date and time
+     * 
+     * @return current date and time
+     */
     private String getDateandTime() {
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
         LocalDateTime now = LocalDateTime.now();
