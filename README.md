@@ -131,3 +131,6 @@ All tests in **CommitStatusTest.java** use **JUnit assertions** (_assertTrue/ass
 
 ## Build history
 Recent build history can be acessed through this [url](https://normal-full-glider.ngrok-free.app/)
+
+## Way of working
+We are currently in the state of “Working Well” as we feel that a little more time is needed to assure that we are continually tuning and adapting our way-of-working. Since the last assignment, stakeholders have agreed to our way-of-working and we have made sure to inspect the practices and tools we work with regularly. We have been able to adapt and tune this way-of-working in accordance to the current assignment, so those goals are expected to be reached with a little more time. By working with this some more, we will also be able to reach the goals of being able to apply all of these practices without thinking about them, and everything will be more natural for us.
