@@ -75,8 +75,14 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         String cloneddirectoryPath = "src/main/resources/";
         File clonedRepoFile = new File(cloneddirectoryPath);
 
+        // Create commit status object
+        JSONObject head_commit = jsonObject.getJSONObject("head_commit");
+        String sha = head_commit.getString("id");
+        String url = "";
+        CommitStatus status = new CommitStatus(sha, url);
+
         cloneRepository(jsonObject, clonedRepoFile);
-        compileRepository(cloneddirectoryPath, clonedRepoFile);
+        compileRepository(cloneddirectoryPath, clonedRepoFile, status);
 
         File gitFile = new File(cloneddirectoryPath + ".git");
         deleteDirectory(gitFile);
@@ -125,7 +131,7 @@ public class ContinuousIntegrationServer extends AbstractHandler {
      *                            (src/main/resources/)
      * @param clonedRepoFile      - File object representing the cloned repository
      */
-    public void compileRepository(String cloneddirectoryPath, File clonedRepoFile) {
+    public void compileRepository(String cloneddirectoryPath, File clonedRepoFile, CommitStatus status) {
         InvocationRequest invocationRequest = new DefaultInvocationRequest();
         invocationRequest.setPomFile(new File(cloneddirectoryPath, "pom.xml")); // pom.xml is the file that contains the
         // maven configuration
@@ -134,14 +140,21 @@ public class ContinuousIntegrationServer extends AbstractHandler {
 
         DefaultInvoker invoker = new DefaultInvoker(); // Invoker is used to execute the maven commands
 
+        status.setCommitStatusToPending(); // pending status sent to Github
         // Excuting the maven commands
         try {
             InvocationResult result = invoker.execute(invocationRequest);
 
             if (result.getExitCode() == 0) {
                 System.out.println("Build successful!");
+                status.setCommitStatusToSuccess();
             } else {
                 System.out.println("Build failed. Exit code: " + result.getExitCode());
+                if (result.getExitCode() == 1) {
+                    status.setCommitStatusToFailure(); // General failure such as test failure
+                } else {
+                    status.setCommitStatusToError(); // Every other failure classed as error
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();

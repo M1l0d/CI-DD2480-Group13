@@ -30,7 +30,7 @@ public class CommitStatus {
     public CommitStatus(String sha, String targetUrl) {
         this.sha = sha;
         this.targetUrl = targetUrl;
-        this.token = "";
+        this.token = ConfigData.getAccessToken();
         this.httpClient = HttpClients.createDefault();
     }
 
@@ -44,7 +44,7 @@ public class CommitStatus {
     public CommitStatus(String sha, String targetUrl, CloseableHttpClient httpClient) {
         this.sha = sha;
         this.targetUrl = targetUrl;
-        this.token = "";
+        this.token = ConfigData.getAccessToken();
         this.httpClient = httpClient;
     }
 
