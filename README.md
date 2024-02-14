@@ -184,6 +184,7 @@ The method tests the __deleteDirectory__ method to ensure that it deletes a repo
 All tests in __CommitStatusTest.java__ use __JUnit assertions__ (_assertTrue/assertFalse)_ to verify that the expected behaviour of the methods.
 
 ### BuildAttempt.java
+BuildAttempt is a class that holds functionality to get, set and save details on build attempts
 
 ```sh {"id":"01HPKGYX36A4S95AGC3VC3VB14"}
 public void setCommitId(String commitId)
@@ -259,18 +260,22 @@ Returns commitId
 public void saveToJsonFile()
 
 ```
+Saves the current BuildAttempt object into a JSON file
 
 ### CustomOutputHandler.java
+Class is used to handle Invocation Output created when building the repository
 
 ```sh {"id":"01HPKGYX37V021K2FD03WX9KG2"}
 public void consumeLine(String line)
 
 ```
+Appends each line from output to  StringBuilder
 
 ```sh {"id":"01HPKGYX37V021K2FD065Y7AVJ"}
 public String getOutput()
 
 ```
+Returns the output from the current OutputHandler
 
 ## Build history
 
