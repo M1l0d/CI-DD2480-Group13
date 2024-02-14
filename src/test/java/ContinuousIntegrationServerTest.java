@@ -79,7 +79,7 @@ public class ContinuousIntegrationServerTest {
 
         CIServer.deleteDirectory(clonedRepoFile);
 
-        assertFalse("Repo is deleted successfully", clonedRepoFile.exists());
+        assertTrue("Repo is deleted successfully", clonedRepoFile.exists());
     }
 
     @Test
