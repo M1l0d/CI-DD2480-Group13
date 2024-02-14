@@ -66,7 +66,9 @@ public class BuildAttempt {
             List<BuildAttempt> existingBuildAttempts = new Gson().fromJson(existingJsonContent, new TypeToken<List<BuildAttempt>>() {}.getType());
     
             // Append new builds to the existing list
-            existingBuildAttempts.add(this);
+            if(!commitId.equals("")) {
+                existingBuildAttempts.add(this);
+            }
 
             // Write the updated list back to the file with pretty printing
             Gson gson = new GsonBuilder().setPrettyPrinting().create();

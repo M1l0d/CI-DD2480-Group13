@@ -126,7 +126,6 @@ public class ContinuousIntegrationServer extends AbstractHandler {
 
         DefaultInvoker invoker = new DefaultInvoker(); // Invoker is used to execute the maven commands
         
-        // Create a CustomOutputHandler
         CustomOutputHandler outputHandler = new CustomOutputHandler();
         invoker.setOutputHandler(outputHandler);
         // Excuting the maven commands
@@ -143,7 +142,6 @@ public class ContinuousIntegrationServer extends AbstractHandler {
 
             // Retrieve the captured output
             String capturedOutput = outputHandler.getOutput();
-            //System.out.println("Captured Output:\n" + capturedOutput);
             buildAttempt.setBuildLog(capturedOutput);
             buildAttempt.saveToJsonFile();
 
@@ -192,7 +190,7 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         File clonedRepoFile = new File(cloneddirectoryPath);
         BuildAttempt buildAttempt = new BuildAttempt();
 
-        cloneRepository(jsonObject, clonedRepoFile);
+        cloneRepository(jsonObject, clonedRepoFile, buildAttempt);
         compileRepository(cloneddirectoryPath, clonedRepoFile, buildAttempt);
 
         File gitFile = new File(cloneddirectoryPath + ".git");
@@ -205,16 +203,22 @@ public class ContinuousIntegrationServer extends AbstractHandler {
     }
 
     /**
-     * Method that clones the repository from the JSON object
+     * Method that clones the repository from the JSON object and saves commit details to build history
      *
      * @param jsonObject     - JSON object containing the push event
      * @param clonedRepoFile - File object representing the cloned repository
      */
-    public void cloneRepository(JSONObject jsonObject, File clonedRepoFile) {
+    public void cloneRepository(JSONObject jsonObject, File clonedRepoFile, BuildAttempt buildAttempt) {
         // Get clone url and branch name
         JSONObject repository = jsonObject.getJSONObject("repository");
         String cloneUrl = repository.getString("clone_url");
         String branchName = jsonObject.getString("ref").replace("refs/heads/", "");
+
+        JSONObject head_commit = jsonObject.getJSONObject("head_commit");
+        buildAttempt.setBuildDate(head_commit.getString("timestamp"));
+        JSONObject pusher = jsonObject.getJSONObject("pusher");
+        buildAttempt.setCommitMadeBy(pusher.getString("name"));
+        buildAttempt.setCommitId(head_commit.getString("id"));
 
         if (isRepositoryCloned(clonedRepoFile.toString())) {
             System.out.println("Repo is already cloned in a directory. Will delete now!");
