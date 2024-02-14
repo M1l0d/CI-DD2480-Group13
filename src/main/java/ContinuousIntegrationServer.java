@@ -117,7 +117,7 @@ public class ContinuousIntegrationServer extends AbstractHandler {
      * @param clonedRepoPath - Path to the cloned repository (src/main/resources/)
      * @param clonedRepoFile - File object representing the cloned repository
      */
-    public void compileRepository(String clonedRepoPath, File clonedRepoFile, BuildAttempt buildAttempt) {
+    public void compileRepository(String clonedRepoPath, File clonedRepoFile,CommitStatus status, BuildAttempt buildAttempt) {
         InvocationRequest invocationRequest = new DefaultInvocationRequest();
         invocationRequest.setPomFile(new File(clonedRepoPath, "pom.xml")); // pom.xml is the file that contains the
                                                                            // maven configuration
@@ -125,6 +125,8 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         invocationRequest.setGoals(Collections.singletonList("clean install"));
 
         DefaultInvoker invoker = new DefaultInvoker(); // Invoker is used to execute the maven commands
+
+        status.setCommitStatusToPending(); // pending status sent to Github
         
         CustomOutputHandler outputHandler = new CustomOutputHandler();
         invoker.setOutputHandler(outputHandler);
@@ -134,10 +136,17 @@ public class ContinuousIntegrationServer extends AbstractHandler {
 
             if (result.getExitCode() == 0) {
                 System.out.println("Build successful!");
+                status.setCommitStatusToSuccess();
                 buildAttempt.setBuildSuccess("Build successful!");
             } else {
                 System.out.println("Build failed. Exit code: " + result.getExitCode());
                 buildAttempt.setBuildSuccess("Build failed");
+
+                if (result.getExitCode() == 1) {
+                    status.setCommitStatusToFailure(); // General failure such as test failure
+                } else {
+                    status.setCommitStatusToError(); // Every other failure classed as error
+                }
             }
 
             // Retrieve the captured output
@@ -190,8 +199,14 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         File clonedRepoFile = new File(cloneddirectoryPath);
         BuildAttempt buildAttempt = new BuildAttempt();
 
+        // Create commit status object
+        JSONObject head_commit = jsonObject.getJSONObject("head_commit");
+        String sha = head_commit.getString("id");
+        String url = "";
+        CommitStatus status = new CommitStatus(sha, url);
+
         cloneRepository(jsonObject, clonedRepoFile, buildAttempt);
-        compileRepository(cloneddirectoryPath, clonedRepoFile, buildAttempt);
+        compileRepository(cloneddirectoryPath, clonedRepoFile, status, buildAttempt);
 
         File gitFile = new File(cloneddirectoryPath + ".git");
         deleteDirectory(clonedRepoFile);
@@ -238,6 +253,43 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         }
     }
 
+    // /* 
+    //  * Method that compiles the repository using maven commands, specifically "clean
+    //  * install"
+    //  *
+    //  * @param cloneddirectoryPath - Path to the cloned repository
+    //  *                            (src/main/resources/)
+    //  * @param clonedRepoFile      - File object representing the cloned repository
+    //  */
+    // public void compileRepository(String cloneddirectoryPath, File clonedRepoFile, CommitStatus status) {
+    //     InvocationRequest invocationRequest = new DefaultInvocationRequest();
+    //     invocationRequest.setPomFile(new File(cloneddirectoryPath, "pom.xml")); // pom.xml is the file that contains the
+    //     // maven configuration
+    //     invocationRequest.setBaseDirectory(clonedRepoFile);
+    //     invocationRequest.setGoals(Collections.singletonList("clean install"));
+
+    //     DefaultInvoker invoker = new DefaultInvoker(); // Invoker is used to execute the maven commands
+
+    //     status.setCommitStatusToPending(); // pending status sent to Github
+    //     // Excuting the maven commands
+    //     try {
+    //         InvocationResult result = invoker.execute(invocationRequest);
+
+    //         if (result.getExitCode() == 0) {
+    //             System.out.println("Build successful!");
+    //             status.setCommitStatusToSuccess();
+    //         } else {
+    //             System.out.println("Build failed. Exit code: " + result.getExitCode());
+    //             if (result.getExitCode() == 1) {
+    //                 status.setCommitStatusToFailure(); // General failure such as test failure
+    //             } else {
+    //                 status.setCommitStatusToError(); // Every other failure classed as error
+    //             }
+    //         }
+    //     } catch (Exception e) {
+    //         e.printStackTrace();
+    //     }
+    // }
     // used to start the CI server in command line
     public static void main(String[] args) throws Exception {
         Server server = new Server(8034);
