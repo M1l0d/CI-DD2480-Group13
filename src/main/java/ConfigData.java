@@ -19,20 +19,4 @@ public class ConfigData {
             return null;
         }
     }
-
-    /**
-     * Return the current Ngrok link
-     * 
-     * @return current Ngrok link or null if non-existent
-     */
-    public static String getNgrokLink() {
-        Properties properties = new Properties();
-        try (FileInputStream fis = new FileInputStream("config.properties")) {
-            properties.load(fis);
-            return properties.getProperty("current.ngroklink");
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
 }

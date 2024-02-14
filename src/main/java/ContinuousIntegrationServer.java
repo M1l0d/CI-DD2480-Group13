@@ -64,40 +64,44 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         System.out.println(request.getMethod());
         System.out.println("URI: " + request.getRequestURI());
 
-
         if (request.getMethod().equals("GET")) {
 
             Path jsonFilePath = Paths.get("src/main/resources/buildHistory.JSON");
             String existingJsonContent = new String(Files.readAllBytes(jsonFilePath));
-            List<BuildAttempt> existingBuildAttempts = new Gson().fromJson(existingJsonContent, new TypeToken<List<BuildAttempt>>() {}.getType());
+            List<BuildAttempt> existingBuildAttempts = new Gson().fromJson(existingJsonContent,
+                    new TypeToken<List<BuildAttempt>>() {
+                    }.getType());
 
-            if(target.equals("/builds")) {                
+            if (target.equals("/builds")) {
                 response.getWriter().println("<html><body>");
                 for (BuildAttempt buildAttempt : existingBuildAttempts) {
-                    response.getWriter().println("<a href='/" + buildAttempt.commitId + "'>"  + " Build Date: " + buildAttempt.getBuildDate() + " Build status: " + buildAttempt.getBuildSuccess() + "</a><br>");
+                    response.getWriter()
+                            .println("<a href='/" + buildAttempt.commitId + "'>" + " Build Date: "
+                                    + buildAttempt.getBuildDate() + " Build status: " + buildAttempt.getBuildSuccess()
+                                    + "</a><br>");
                 }
                 response.getWriter().println("</body></html>");
-            }
-            else {
+            } else {
                 response.getWriter().println("<html><body>");
                 for (BuildAttempt buildAttempt : existingBuildAttempts) {
-                    if(request.getRequestURI().equals("/" + buildAttempt.commitId)) {
-                        response.getWriter().println( "<div> Build Date: "  +  buildAttempt.buildDate + "</div>");
-                        response.getWriter().println("<div> Build Status: "  +  buildAttempt.buildSuccess + "</div>");
-                        response.getWriter().println("<div> Commit done by: "  +  buildAttempt.commitMadeBy + "</div>");
+                    if (request.getRequestURI().equals("/" + buildAttempt.commitId)) {
+                        response.getWriter().println("<div> Build Date: " + buildAttempt.buildDate + "</div>");
+                        response.getWriter().println("<div> Build Status: " + buildAttempt.buildSuccess + "</div>");
+                        response.getWriter().println("<div> Commit done by: " + buildAttempt.commitMadeBy + "</div>");
                         response.getWriter().println("<div> Build log: </div>");
-                        response.getWriter().println("<div style=\"white-space: pre-line;\">" + buildAttempt.buildLog + "</div>");
+                        response.getWriter()
+                                .println("<div style=\"white-space: pre-line;\">" + buildAttempt.buildLog + "</div>");
                     }
                 }
                 response.getWriter().println("</body></html>");
             }
         }
-        
-        if(request.getMethod().equals("POST")) {
+
+        if (request.getMethod().equals("POST")) {
             String eventType = request.getHeader("X-Github-Event"); // Get the event type from the header
             String jsonRequest = IOUtils.toString(request.getReader());
             JSONObject jsonObject = new JSONObject(jsonRequest);
-    
+
             // If it is not a push event, do not continue
             if (!"push".equals(eventType)) {
                 response.getWriter().println("Not performing CI job - Event is not 'push'");
@@ -117,7 +121,8 @@ public class ContinuousIntegrationServer extends AbstractHandler {
      * @param clonedRepoPath - Path to the cloned repository (src/main/resources/)
      * @param clonedRepoFile - File object representing the cloned repository
      */
-    public void compileRepository(String clonedRepoPath, File clonedRepoFile,CommitStatus status, BuildAttempt buildAttempt) {
+    public void compileRepository(String clonedRepoPath, File clonedRepoFile, CommitStatus status,
+            BuildAttempt buildAttempt) {
         InvocationRequest invocationRequest = new DefaultInvocationRequest();
         invocationRequest.setPomFile(new File(clonedRepoPath, "pom.xml")); // pom.xml is the file that contains the
                                                                            // maven configuration
@@ -127,7 +132,7 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         DefaultInvoker invoker = new DefaultInvoker(); // Invoker is used to execute the maven commands
 
         status.setCommitStatusToPending(); // pending status sent to Github
-        
+
         CustomOutputHandler outputHandler = new CustomOutputHandler();
         invoker.setOutputHandler(outputHandler);
         // Excuting the maven commands
@@ -158,7 +163,6 @@ public class ContinuousIntegrationServer extends AbstractHandler {
             e.printStackTrace();
         }
     }
-
 
     /**
      * Method that deletes the cloned repository after the CI job is done to avoid
@@ -218,7 +222,8 @@ public class ContinuousIntegrationServer extends AbstractHandler {
     }
 
     /**
-     * Method that clones the repository from the JSON object and saves commit details to build history
+     * Method that clones the repository from the JSON object and saves commit
+     * details to build history
      *
      * @param jsonObject     - JSON object containing the push event
      * @param clonedRepoFile - File object representing the cloned repository
@@ -253,44 +258,6 @@ public class ContinuousIntegrationServer extends AbstractHandler {
         }
     }
 
-    // /* 
-    //  * Method that compiles the repository using maven commands, specifically "clean
-    //  * install"
-    //  *
-    //  * @param cloneddirectoryPath - Path to the cloned repository
-    //  *                            (src/main/resources/)
-    //  * @param clonedRepoFile      - File object representing the cloned repository
-    //  */
-    // public void compileRepository(String cloneddirectoryPath, File clonedRepoFile, CommitStatus status) {
-    //     InvocationRequest invocationRequest = new DefaultInvocationRequest();
-    //     invocationRequest.setPomFile(new File(cloneddirectoryPath, "pom.xml")); // pom.xml is the file that contains the
-    //     // maven configuration
-    //     invocationRequest.setBaseDirectory(clonedRepoFile);
-    //     invocationRequest.setGoals(Collections.singletonList("clean install"));
-
-    //     DefaultInvoker invoker = new DefaultInvoker(); // Invoker is used to execute the maven commands
-
-    //     status.setCommitStatusToPending(); // pending status sent to Github
-    //     // Excuting the maven commands
-    //     try {
-    //         InvocationResult result = invoker.execute(invocationRequest);
-
-    //         if (result.getExitCode() == 0) {
-    //             System.out.println("Build successful!");
-    //             status.setCommitStatusToSuccess();
-    //         } else {
-    //             System.out.println("Build failed. Exit code: " + result.getExitCode());
-    //             if (result.getExitCode() == 1) {
-    //                 status.setCommitStatusToFailure(); // General failure such as test failure
-    //             } else {
-    //                 status.setCommitStatusToError(); // Every other failure classed as error
-    //             }
-    //         }
-    //     } catch (Exception e) {
-    //         e.printStackTrace();
-    //     }
-    // }
-    // used to start the CI server in command line
     public static void main(String[] args) throws Exception {
         Server server = new Server(8034);
         server.setHandler(new ContinuousIntegrationServer());
