@@ -128,3 +128,6 @@ public void testSetCommitStatusWhenRequestIsSuccessful()
 The method tests the **deleteDirectory** method to ensure that it deletes a repository successfully. Similarly to the testing method before, a _JSONObject_ is set up together with the cloned repository file. A repository is cloned and 5 seconds is waited (assuming it takes less than 5 seconds to clone). The repository is then deleted and the method asserts that the repository does not exist.
 
 All tests in **CommitStatusTest.java** use **JUnit assertions** (_assertTrue/assertFalse)_ to verify that the expected behaviour of the methods.
+
+## Build history
+Recent build history can be acessed through this [url](https://normal-full-glider.ngrok-free.app/)
