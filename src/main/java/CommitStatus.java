@@ -67,7 +67,7 @@ public class CommitStatus {
         request.setHeader(HttpHeaders.AUTHORIZATION, "token " + token);
         request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
         request.setHeader(HttpHeaders.ACCEPT, "application/vnd.github.v3+json");
-        request.setHeader("X-GitHub-Api-Version", getDateandTime());
+        request.setHeader("X-GitHub-Api-Version", "2022-11-28");
         request.setEntity(new StringEntity(jsonBody, "UTF-8"));
 
         try {
@@ -108,16 +108,5 @@ public class CommitStatus {
      */
     public void setCommitStatusToError() {
         sendCommitStatus("error", "Error: Failed to build/test/verify the commit.");
-    }
-
-    /**
-     * Get the current date and time
-     * 
-     * @return current date and time
-     */
-    private String getDateandTime() {
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
-        LocalDateTime now = LocalDateTime.now();
-        return dtf.format(now);
     }
 }
