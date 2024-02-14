@@ -102,6 +102,10 @@ public class ContinuousIntegrationServerTest {
         String clonedRepoPath = "src/main/resources/clonedRepo";
         File clonedRepoFile = new File(clonedRepoPath);
 
+        String sha = head_commit.getString("id");
+        String url = "";
+        CommitStatus status = new CommitStatus(sha, url);
+
         Path jsonFilePath = Paths.get("src/main/resources/buildHistory.JSON");
         String existingJsonContent = new String(Files.readAllBytes(jsonFilePath));
         List<BuildAttempt> existingBuildAttempts = new Gson().fromJson(existingJsonContent, new TypeToken<List<BuildAttempt>>() {}.getType());
@@ -109,7 +113,7 @@ public class ContinuousIntegrationServerTest {
         double buildHistorySize = existingBuildAttempts.size();
 
         CIServer.cloneRepository(jsonObject, clonedRepoFile, buildAttemptWithoutIdToNotBeSaved);
-        CIServer.compileRepository(clonedRepoPath, clonedRepoFile, buildAttemptWithoutIdToNotBeSaved);
+        CIServer.compileRepository(clonedRepoPath, clonedRepoFile,status, buildAttemptWithoutIdToNotBeSaved);
         CIServer.deleteDirectory(clonedRepoFile);
 
         existingJsonContent = new String(Files.readAllBytes(jsonFilePath));
